@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "FuKeys"
+StartupObject = "FuKeys.Program"
+
+[Platform.Windows]
+IconFile = "icons/bolt.ico"
+Company = "Fusion LLC"
+Product = "BatteryDisplay"
+
+[Configs.Debug.Win64]
+LibPaths = ["Setupapi.lib", "Hid.lib", "Shell32.lib"]
