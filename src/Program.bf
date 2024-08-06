@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Threading;
+using System.IO;
 
 using internal FuKeys;
 
@@ -22,6 +23,7 @@ class Program
 	);
 
 	const int ERROR_DELAY_MS = 10000;
+	const int MAX_CONSECUTIVE_ERRORS = 10;
 
 	static bool IsSupported(uint32 productId, out bool isWireless)
 	{
@@ -145,7 +147,7 @@ class Program
 			if (bestDevice == null)
 			{
 				Log.Error("Failed to find supported device.");
-				System.Threading.Thread.Sleep(ERROR_DELAY_MS);
+				Thread.Sleep(ERROR_DELAY_MS);
 				continue;
 			}	
 
@@ -153,23 +155,41 @@ class Program
 			if (driver.Init(bestDevice.isWireless) case .Err)
 			{
 				Log.Error($"Failed to initialize device. ");
+				Thread.Sleep(ERROR_DELAY_MS);
 				continue;
 			}
 			Log.Success(scope $"Device initialized");
 
 			String deviceName = scope .();
-			switch (driver.GetDeviceName(deviceName))
+			switch (driver.GetDeviceName(deviceName, let supported))
 			{
 			case .Ok:
 				Log.Info(scope $"Device name: {deviceName}");
 			case .Err:
-				Log.Warning("Failed to retrieve device name");
+				if (supported)
+				{
+					Log.Error("Failed to retrieve device name");
+					Thread.Sleep(ERROR_DELAY_MS);
+					continue;
+				}
+				String name = scope $"UNKNOWN";
+				if (Enum.IsDefined<ESupportedProducts>((ESupportedProducts)bestDevice.productId))
+				{
+					name.Clear();
+					((ESupportedProducts)bestDevice.productId).ToString(name);
+				}
+
+				Log.Warning(scope $"Device '{name}' doesn't support name retrieval");
 			}
 
 			uint8 lastState = 0;
 			Hidpp20.EBatteryStatus lastStatus = .Unknown;
 			Hidpp20.EBatteryLevel lastLevel = .Unknown;
-			while (!exitEvent.WaitFor(0) && driver.IsConnected)
+
+			int32 consecutiveErrors = 0;
+
+			EVENT_LOOP:
+			while (!exitEvent.WaitFor(0) && driver.IsUSBDeviceValid)
 			{
 				driver.ReadNotifications(.FromMilliseconds(4000));
 
@@ -181,6 +201,8 @@ class Program
 
 				if (driver.GetBatteryStatus() case .Ok((let state, let status, let level)))
 				{
+					consecutiveErrors = 0;
+
 					if (state != lastState || status != lastStatus || level != lastLevel)
 					{
 						lastState = state;
@@ -197,13 +219,15 @@ class Program
 						case .Full: icon  = .BatteryFull;
 						case .Discharching:
 							{
-								if (state > 85)
+								bool invalidState = (state > 100 || state <= 0) && level != .Unknown;
+								
+								if ((!invalidState && state > 85) || (invalidState && level == .Full))
 									icon = .BatteryFull;
-								else if (state >= 60)
+								else if ((!invalidState && state >= 60) || (invalidState && level == .Good))
 									icon = .Battery_3_4;
-								else if (state >= 40)
+								else if ((!invalidState && state >= 40) || (invalidState && level == .Low))
 									icon = .Battery_1_2;
-								else if (state >= 20)
+								else if ((!invalidState && state >= 20) || (invalidState && level != .Critical /* Skip 1/4 icon and go to empty */))
 									icon = .Battery_1_4;
 								else
 									icon = .BatteryEmpty;
@@ -217,10 +241,19 @@ class Program
 				else
 				{
 					Log.Error("Failed to retrieve battery status");
+
+					if (++consecutiveErrors == MAX_CONSECUTIVE_ERRORS)
+					{
+						Log.Error("Too many consecutive errors, restarting device handler");
+						Thread.Sleep(ERROR_DELAY_MS);
+						break EVENT_LOOP;
+					}
+
 				}
 			}
-
 		}
+
+		Log.Trace("Shutting down device thread");
 	}
 
 
@@ -236,25 +269,50 @@ class Program
 			Console.ForegroundColor = color;
 		});
 
+		Directory.CreateDirectory("logs");
+		File.Delete("logs/previous.log").IgnoreError();
+		File.Move("logs/latest.log", "logs/previous.log").IgnoreError();
+		FileStream fs = new .();
+		switch (fs.Open("logs/latest.log", .Create, .ReadWrite, .Read))
+		{
+		case .Err(let err):
+			Log.Error(scope $"Failed to open log file ({err})");
+			delete fs;
+
+		case .Ok:
+			Log.AddCallback(new [=fs](level, time, message, preferredFormat) => {
+				fs.Write(preferredFormat).IgnoreError();
+				fs.Write(Environment.NewLine).IgnoreError();
+				fs.Flush().IgnoreError();
+			} ~ {
+				delete fs;
+			});
+		}
+		
+
 		Notifications notifications = scope Notifications_Windows();
-		WaitEvent exitEvent = scope .();
 
 		if (notifications.Init() case .Err)
 		{
 			Log.Error("Failed to initialize notifications");
 			return 1;
 		}
+		Log.Success("Initialized notifications");
+
+		WaitEvent exitEvent = scope .();
 
 		let deviceThread = new Thread(new () => RunMouseStuff(exitEvent, notifications));
 		deviceThread.Start();
 
-		notifications.Run(scope [&]() => {
+		notifications.Run(scope [?]() => {
 
 			return true;
 		});
 
 		exitEvent.Set(true);
 		deviceThread.Join();
+
+		Log.Trace("Exiting");
 
 		return 0;
 	}

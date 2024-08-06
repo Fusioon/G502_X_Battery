@@ -2,6 +2,7 @@ FileVersion = 1
 
 [Project]
 Name = "FuKeys"
+TargetType = "BeefGUIApplication"
 StartupObject = "FuKeys.Program"
 
 [Platform.Windows]

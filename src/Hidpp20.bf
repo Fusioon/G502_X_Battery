@@ -128,7 +128,7 @@ class Hidpp20
 		_deviceLong = long;
 	}
 
-	public bool IsConnected => _deviceShort.IsValid && _deviceLong.IsValid;
+	public bool IsUSBDeviceValid => _deviceShort.IsValid && _deviceLong.IsValid;
 
 	Result<void> WriteShortMessage(hidpp20_message msg)
 	{
@@ -336,9 +336,21 @@ class Hidpp20
 	}
 
 
-	public Result<void> GetDeviceName(String buffer)
+	public Result<void> GetDeviceName(String buffer, out bool supported)
 	{
-		let name = Try!(GetFeatureInfo(.DeviceName));
+		Hidpp20Feature name;
+		switch (GetFeatureInfo(.DeviceName) )
+		{
+			case .Ok(out name):
+			{
+				supported = true;
+			}
+			case .Err:
+			{
+				supported = false;
+				return .Err;
+			}
+		}
 
 		const int CMD_GET_DEVICE_NAME_TYPE_GET_COUNT = 0x01;
 		const int CMD_GET_DEVICE_NAME_TYPE_GET_DEVICE_NAME = 0x11;
@@ -614,7 +626,6 @@ class Hidpp20
 				return .Err;
 
 			featureCount++;
-
 
 			for (uint8 i in 0..<featureCount)
 			{

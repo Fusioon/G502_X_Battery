@@ -198,21 +198,17 @@ class Notifications_Windows : Notifications
 
 	bool CreateNotifyIcon()
 	{
-		_nid = .();
-		_nid.cbSize = sizeof(decltype(_nid));
-		_nid.hWnd = _hWnd;
-		_nid.uCallbackMessage = NOTIFY_ID;
-		_nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP;
-		// LoadImageW
-		_nid.hIcon = _iconMap[0]; //LoadIconW(0, (.)(void*)(int)32515);
-		//_nid.hIcon = (.)LoadImageW(0, "K:\\I2PTorrent\\icon.bmp".ToScopedNativeWChar!(), 0, 0, 0, 0x00000040);
-		
-		_nid.hBalloonIcon = _nid.hIcon;
-		_nid.uVersion = 4;
+		_nid = .{
+			cbSize = sizeof(decltype(_nid)),
+			hWnd = _hWnd,
+			uCallbackMessage = NOTIFY_ID,
+			uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP,
+			hIcon = _iconMap[0],
+			hBalloonIcon = _nid.hIcon,
+			uVersion = 4,
+		};
 
-		CopyWide(ref _nid.szTip, "Tip\n100%\nCharging");
-		CopyWide(ref _nid.szInfo, "Info");
-		CopyWide(ref _nid.szInfoTitle, "InfoTitle");
+		CopyWide(ref _nid.szTip, "Waiting for data");
 		
 		if (!Shell_NotifyIconW(NIM_ADD, &_nid))
 		{
