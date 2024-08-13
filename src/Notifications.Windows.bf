@@ -237,6 +237,10 @@ class Notifications_Windows : Notifications
 			switch (System.Text.UTF16.Encode(newTip, &_nid.szTip, _nid.szTip.Count))
 			{
 			case .Ok(let val):
+
+				if (newTip.Length < _nid.szTip.Count)
+					_nid.szTip[newTip.Length] = '\0';
+
 				_changeEvent.Set(true);
 			case .Err(let err):
 				{
