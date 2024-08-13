@@ -187,6 +187,7 @@ class Program
 			Hidpp20.EBatteryLevel lastLevel = .Unknown;
 
 			int32 consecutiveErrors = 0;
+			int32 ignoreAfterDisconnect = 0;
 
 			EVENT_LOOP:
 			while (!exitEvent.WaitFor(0) && driver.IsUSBDeviceValid)
@@ -195,13 +196,24 @@ class Program
 
 				if (!driver.DeviceConnected)
 				{
-					Thread.Sleep(1000);
+					ignoreAfterDisconnect = 1;
+					notifications.UpdateTip(scope $"{deviceName}\nDisconnected");
+					notifications.UpdateIcon(.ChargingError);
+					notifications.CommitChanges();
+					Thread.Sleep(2000);
 					continue;
 				}
 
 				if (driver.GetBatteryStatus() case .Ok((let state, let status, let level)))
 				{
 					consecutiveErrors = 0;
+
+					if (ignoreAfterDisconnect > 0)
+					{
+						ignoreAfterDisconnect--;
+						if ((state == 1 || (level == .Unknown && state == 0)) && status == .Charging)
+							continue;
+					}
 
 					if (state != lastState || status != lastStatus || level != lastLevel)
 					{
