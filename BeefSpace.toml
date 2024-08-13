@@ -1,5 +1,5 @@
 FileVersion = 1
-Projects = {FuKeys = {Path = "."}}
+Projects = {FuBattery = {Path = "."}}
 
 [Workspace]
-StartupProject = "FuKeys"
+StartupProject = "FuBattery"

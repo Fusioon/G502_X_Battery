@@ -1,0 +1,6 @@
+logs
+*.exe
+*.dll
+*.txt
+*.zip
+*.pdb

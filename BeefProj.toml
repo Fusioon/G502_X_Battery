@@ -1,9 +1,10 @@
 FileVersion = 1
 
 [Project]
-Name = "FuKeys"
+Name = "FuBattery"
 TargetType = "BeefGUIApplication"
 StartupObject = "FuKeys.Program"
+DefaultNamespace = "FuKeys"
 
 [Platform.Windows]
 IconFile = "icons/bolt.ico"
@@ -11,4 +12,10 @@ Company = "Fusion LLC"
 Product = "BatteryDisplay"
 
 [Configs.Debug.Win64]
+TargetDirectory = "$(WorkspaceDir)/dist"
+TargetName = "$(ProjectName)_d"
+LibPaths = ["Setupapi.lib", "Hid.lib", "Shell32.lib"]
+
+[Configs.Release.Win64]
+TargetDirectory = "$(WorkspaceDir)/dist"
 LibPaths = ["Setupapi.lib", "Hid.lib", "Shell32.lib"]
