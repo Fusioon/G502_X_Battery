@@ -9,19 +9,20 @@ namespace FuKeys;
 
 class Notifications_Windows : Notifications
 {
+	const String APP_REGISTRY_NAME = "FuBattery";
+	const String RUN_ON_STARTUP_REGISTRY_PATH = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+
+	static char16[?] APP_REGISTRY_NAME_WIDE = APP_REGISTRY_NAME.ToConstNativeW();
+	static char16[?] RUN_ON_STARTUP_REGISTRY_PATH_WIDE = RUN_ON_STARTUP_REGISTRY_PATH.ToConstNativeW();
+
 	const int NOTIFY_ID = WM_APP + 0xDDC;
 	const int CMD_TOGGLE_CONSOLE = WM_USER + 10;
 	const int CMD_EXIT = WM_USER + 11;
-	const int WMU_COMMIT = WM_USER + 12;
+	const int CMD_TOGGLE_STARTUP = WM_USER + 12;
+	const int WMU_COMMIT = WM_USER + 30;
 
 
 	HIcon[Enum.GetCount<EIcon>()] _iconMap;
-
-	[CallingConvention(.Stdcall), CLink]
-	static extern HIcon CreateIconFromResourceEx(void* prebits, c_uint dwResSize, Windows.IntBool fIcon, c_uint dwVer, c_int cxDesired, c_int cyDesired, c_uint Flags);
-
-	[CallingConvention(.Stdcall), CLink]
-	static extern Windows.HWnd GetConsoleWindow();
 
 	Windows.HInstance _hApp;
 	Windows.HWnd _hWnd;
@@ -110,6 +111,14 @@ class Notifications_Windows : Notifications
 						ShowWindow(_consoleWindow, (int32)(_consoleVisible ? SW_SHOW : SW_HIDE));
 						CheckMenuItem(_hCtxMenu, CMD_TOGGLE_CONSOLE, (.)(MF_BYCOMMAND | (_consoleVisible ? MF_CHECKED : MF_UNCHECKED)));
 
+						return 0;
+					}
+
+				case CMD_TOGGLE_STARTUP:
+					{
+						uint32 flags = (uint32)(IsRunAtStartup(true) ? MF_UNCHECKED : MF_CHECKED);
+						SetRunAtStartup(flags == MF_CHECKED);
+						CheckMenuItem(_hCtxMenu, CMD_TOGGLE_STARTUP, (uint32)MF_BYCOMMAND | flags);
 						return 0;
 					}
 
@@ -259,6 +268,60 @@ class Notifications_Windows : Notifications
 		}
 	}
 
+	bool IsRunAtStartup(bool checkPath)
+	{
+		c_wchar[Windows.MAX_PATH] buffer = default;
+		uint32 length = buffer.Count;
+
+		if (RegGetValueW(HKEY_CURRENT_USER, &RUN_ON_STARTUP_REGISTRY_PATH_WIDE, &APP_REGISTRY_NAME_WIDE, RRF_RT_REG_SZ, null, &buffer, &length) == 0)
+		{
+			if (checkPath)
+			{
+				String path = scope .(Span<c_wchar>(&buffer, length));
+				return System.IO.File.Exists(path);
+			}
+
+			return true;
+		}
+
+		return false;
+	}
+
+	bool SetRunAtStartup(bool enable)
+	{
+		if (!enable)
+		{
+			return RegDeleteKeyValueW(HKEY_CURRENT_USER, &RUN_ON_STARTUP_REGISTRY_PATH_WIDE, &APP_REGISTRY_NAME_WIDE) == 0;
+		}
+
+		HKey hKey = default;
+		uint32 disposition = 0;
+		var res = RegCreateKeyExW(HKEY_CURRENT_USER, &RUN_ON_STARTUP_REGISTRY_PATH_WIDE, 0, null, REG_OPTION_NON_VOLATILE, KEY_WRITE, null, &hKey, &disposition);
+		if (res != 0)
+		{
+			Log.Error(scope $"[Win32] Failed to create/open registry path '{RUN_ON_STARTUP_REGISTRY_PATH}'. ({Windows.GetLastError()})");
+			return false;
+		}
+		defer RegCloseKey(hKey);
+
+		c_wchar[Windows.MAX_PATH] buffer = default;
+		let length = GetModuleFileNameW(0, &buffer, buffer.Count);
+
+		if (length == 0)
+		{
+			Log.Error(scope $"[Win32] Failed to retrieve executable path. ({Windows.GetLastError()})");
+			return false;
+		}
+
+		if (RegSetKeyValueW(hKey, null, &APP_REGISTRY_NAME_WIDE, REG_SZ, &buffer, length * sizeof(c_wchar)) != 0)
+		{
+			Log.Error(scope $"[Win32] Failed to set value of registry key '{APP_REGISTRY_NAME_WIDE}'. ({Windows.GetLastError()})");
+			return false;
+		}
+
+		return true;
+	}
+
 	bool CreateNotifyIconContextMenu()
 	{
 		_hCtxMenu = CreatePopupMenu();
@@ -270,6 +333,9 @@ class Notifications_Windows : Notifications
 
 		if (_consoleWindow != default)
 			AppendMenuW(_hCtxMenu, MF_UNCHECKED, CMD_TOGGLE_CONSOLE, "Toggle Console".ToScopedNativeWChar!());
+
+		bool atStartup = IsRunAtStartup(true);
+		AppendMenuW(_hCtxMenu, (uint32)(atStartup ? MF_CHECKED : MF_UNCHECKED), CMD_TOGGLE_STARTUP, "Start with windows".ToScopedNativeWChar!());
 
 		AppendMenuW(_hCtxMenu, MF_STRING, CMD_EXIT, "Exit".ToScopedNativeWChar!());
 		return true;

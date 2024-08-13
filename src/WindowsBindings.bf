@@ -1548,7 +1548,272 @@ static
 	public const int KEYEVENTF_SCANCODE	= 0x0008;
 	public const int KEYEVENTF_UNICODE	= 0x0004;
 
+	///
 
+	public struct HDEVINFO : Windows.Handle
+	{
+
+	}
+
+	[CRepr]
+	public struct GUID : this(uint32 data, uint16 data2, uint16 data3, uint8[8] data4)
+	{
+		
+	}
+
+	[CRepr]
+	public struct SP_DEVICE_INTERFACE_DATA
+	{
+		public c_uint cbSize;
+		public GUID InterfaceClassGuid;
+		public c_uint Flags;
+		public c_uintptr Reserved;
+	}
+
+	[CRepr]
+	public struct SP_DEVICE_INTERFACE_DETAIL_DATA_W
+	{
+		public c_uint cbSize;
+		public c_wchar[1] DevicePath;
+	}
+
+	[CRepr]
+	public struct SP_DEVINFO_DATA
+	{
+		public c_uint cbSize;
+		public GUID ClassGuid;
+		public c_uint DevInst;
+		public c_uintptr Reserved;
+	}
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern HDEVINFO SetupDiGetClassDevsW(GUID* ClassGuid, c_wchar* Enumerator, Windows.HWnd  hwndParent, c_uint Flags);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool SetupDiDestroyDeviceInfoList(HDEVINFO DeviceInfoSet);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool SetupDiEnumDeviceInterfaces(HDEVINFO DeviceInfoSet, SP_DEVINFO_DATA* DeviceInfoData, GUID* InterfaceClassGuid, c_uint MemberIndex, SP_DEVICE_INTERFACE_DATA* DeviceInterfaceData);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool SetupDiGetDeviceInterfaceDetailW(HDEVINFO DeviceInfoSet, SP_DEVICE_INTERFACE_DATA* DeviceInterfaceData, SP_DEVICE_INTERFACE_DETAIL_DATA_W* DeviceInterfaceDetailData, c_uint DeviceInterfaceDetailDataSize, c_uint* RequiredSize, SP_DEVINFO_DATA* DeviceInfoData);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.Handle GetProcessHeap();
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern void* HeapAlloc(Windows.Handle hHeap, c_uint dwFlags, c_size dwBytes);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool HeapFree(Windows.Handle hHeap, c_uint dwFlags, void* lpMem);
+
+	public const int HEAP_ZERO_MEMORY = 0x00000008;
+
+	public enum ACCESS_MASK : c_uint
+	{
+		StandardRequired = 0x000F0000,
+		#unwarn		
+		StandardRead = .ReadControl,
+		#unwarn		
+		StandardWrite = .ReadControl,
+		#unwarn		
+		StandardExecute = .ReadControl,
+
+		Delete = 1 << 16,
+		ReadControl = 1 << 17,
+		WriteDAC = 1 << 18,
+		WriteOwner = 1 << 19,
+		Synchronize = 1 <<20,
+
+		GenericAll = 1 << 28,
+		GenericExecute = 1 << 29,
+		GenericWrite = 1 << 30,
+		GenericRead = 1 << 31
+	}
+
+	public enum FILE_SHARE : c_uint
+	{
+		None = 0,
+		Delete = 0x00000004,
+		Read = 0x00000001,
+		Write = 0x00000002
+	}
+
+	public enum CREATE_DISPOSITION : c_uint
+	{
+		CreateAlways = 2,
+		CreateNew = 1,
+		OpenAlways = 4,
+		OpenExisting = 3,
+		TruncateExisting = 5
+	}
+
+	[CRepr]
+	public struct SECURITY_ATTRIBUTES
+	{
+		public c_uint nLength;
+		public Windows.SECURITY_DESCRIPTOR* lpSecurityDescriptor;
+		public Windows.IntBool bInheritHandle;
+	}
+
+	public enum FILE_ATTRIBUTE : c_uint
+	{
+		ReadOnly = 0x00000001,          // The file is read only.
+		Hidden = 0x00000002,            // The file is hidden, and thus is not included in an ordinary directory listing.
+		System = 0x00000004,            // The file is part of the operating system or is used exclusively by the operating system.
+		Directory = 0x00000010,         // The handle that identifies a directory.
+		Archive = 0x00000020,           // The file or directory is an archive file or directory. Applications use this attribute to mark files for backup or removal.
+		Device = 0x00000040,            // Reserved for system use.
+		Normal = 0x00000080,            // The file has no other attributes set. This attribute is valid only when used alone.
+		Temporary = 0x00000100,         // The file is being used for temporary storage.
+		SparseFile = 0x00000200,        // The file is a sparse file.
+		ReparsePoint = 0x00000400,      // The file or directory has an associated reparse point, or the file is a symbolic link.
+		Compressed = 0x00000800,        // The file or directory is compressed.
+		Offline = 0x00001000,           // The data of the file is not immediately available.
+		NotContentIndexed = 0x00002000, // The file or directory is not to be indexed by the content indexing service.
+		Encrypted = 0x00004000,         // The file or directory is encrypted.
+		IntegrityStream = 0x00008000,   // The file or directory has integrity support.
+		Virtual = 0x00010000,           // The file is a virtual file.
+		NoScrubData = 0x00020000,       // The file or directory is excluded from the data integrity scan.
+		Ea = 0x00040000,                // The file has extended attributes.
+		#unwarn
+		RecallOnOpen = 0x00040000,      // The file or directory is not fully present locally.
+		Pinned = 0x00080000,            // The file or directory is pinned.
+		Unpinned = 0x00100000,          // The file or directory is unpinned.
+		RecallOnDataAccess = 0x00400000 // The file or directory is recalled on data access.
+	}
+
+	public enum FILE_FLAGS : c_uint
+	{
+		WriteThrough = 0x80000000,          // Write operations will not go through any intermediate cache, they will go directly to disk.
+		Overlapped = 0x40000000,            // The file can be used for asynchronous I/O.
+		NoBuffering = 0x20000000,           // The file will not be cached or buffered in any way.
+		RandomAccess = 0x10000000,          // The file is being accessed in random order.
+		SequentialScan = 0x08000000,        // The file is being accessed sequentially from beginning to end.
+		DeleteOnClose = 0x04000000,         // The file is to be automatically deleted when the last handle to it is closed.
+		BackupSemantics = 0x02000000,       // The file is being opened or created for a backup or restore operation.
+		PosixSemantics = 0x01000000,        // The file is to be accessed according to POSIX rules.
+		OpenReparsePoint = 0x00200000,      // The file is to be opened and a reparse point will not be followed.
+		OpenNoRecall = 0x00100000,          // The file data should not be recalled from remote storage.
+		FirstPipeInstance = 0x00080000      // The creation of the first instance of a named pipe.
+	}
+
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.Handle CreateFileW(
+		c_wchar* lpFileName,
+		ACCESS_MASK desiredAccess,
+		FILE_SHARE shareMode,
+		SECURITY_ATTRIBUTES* lpSecurityAttributes,
+		CREATE_DISPOSITION creationDisposition,
+		uint32 dwFlagsAndAttributes,
+		Windows.Handle hTemplateFile);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool WriteFile(Windows.Handle hFile, void* lpBuffer, c_uint nNumberOfBytesToWrite, c_uint* lpNumberOfBytesWritten, Windows.Overlapped* lpOverlapped);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool ReadFile(Windows.Handle hFile, void* lpBuffer, c_uint nNumberOfBytesToRead, c_uint* lpNumberOfBytesRead, Windows.Overlapped* lpOverlapped);
+
+	[CallingConvention(.Stdcall)]
+	public function void OVERLAPPED_COMPLETION_ROUTINE(c_uint dwErrorCode, c_uint dwNumberOfBytesTransfered, Windows.Overlapped* lpOverlapped);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool WriteFileEx(Windows.Handle hFile, void* lpBuffer, c_uint nNumberOfBytesToRead, Windows.Overlapped* lpOverlapped, OVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool ReadFileEx(Windows.Handle hFile, void* lpBuffer, c_uint nNumberOfBytesToRead, Windows.Overlapped* lpOverlapped, OVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern c_uint WaitForSingleObject(Windows.Handle hHandle, c_uint dwMilliseconds);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool GetOverlappedResult(Windows.Handle hFile, Windows.Overlapped* lpOverlapped, c_uint* lpNumberOfBytesTransferred, Windows.IntBool bWait);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.Handle CreateEventW(SECURITY_ATTRIBUTES* lpEventAttributes, Windows.IntBool bManualReset, Windows.IntBool bInitialState, c_wchar* lpName);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool CancelIo(Windows.Handle hFile);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.IntBool CancelIoEx(Windows.Handle hFile, Windows.Overlapped* lpOverlapped);
+
+	public const int WAIT_ABANDONED = 0x00000080L;
+	public const int WAIT_OBJECT_0 = 0x00000000L;
+	public const int WAIT_TIMEOUT = 0x00000102L;
+	public const int WAIT_FAILED = 0xFFFFFFFF;
+
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern HIcon CreateIconFromResourceEx(void* prebits, c_uint dwResSize, Windows.IntBool fIcon, c_uint dwVer, c_int cxDesired, c_int cyDesired, c_uint Flags);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern Windows.HWnd GetConsoleWindow();
+
+	public struct HKey : uint {}
+	public const HKey HKEY_CURRENT_USER = (.)0x80000001;
+
+	public const int RRF_RT_ANY = 0x0000ffff;
+	public const int RRF_RT_REG_NONE = 0x00000001;
+	public const int RRF_RT_REG_SZ = 0x00000002;
+
+	public const int REG_OPTION_NON_VOLATILE = 0x00000000;
+
+	public const ACCESS_MASK KEY_QUERY_VALUE =         (.)(0x0001);
+	public const ACCESS_MASK KEY_SET_VALUE =           (.)(0x0002);
+	public const ACCESS_MASK KEY_CREATE_SUB_KEY =      (.)(0x0004);
+	public const ACCESS_MASK KEY_ENUMERATE_SUB_KEYS =  (.)(0x0008);
+	public const ACCESS_MASK KEY_NOTIFY =              (.)(0x0010);
+	public const ACCESS_MASK KEY_CREATE_LINK =         (.)(0x0020);
+	public const ACCESS_MASK KEY_WOW64_32KEY =         (.)(0x0200);
+	public const ACCESS_MASK KEY_WOW64_64KEY =         (.)(0x0100);
+	public const ACCESS_MASK KEY_WOW64_RES =           (.)(0x0300);
+
+	public const ACCESS_MASK KEY_READ = (.StandardRead | KEY_QUERY_VALUE | KEY_ENUMERATE_SUB_KEYS | KEY_NOTIFY) & (~.Synchronize);
+	public const ACCESS_MASK KEY_WRITE = (.StandardWrite | KEY_SET_VALUE | KEY_CREATE_SUB_KEY) & (~.Synchronize);
+	public const ACCESS_MASK KEY_EXECUTE = (KEY_READ) & (~.Synchronize);
+
+	public const int REG_NONE =                    0; // No value type
+	public const int REG_SZ =                      1; // Unicode nul terminated string
+	public const int REG_EXPAND_SZ =               2; // Unicode nul terminated string (with environment variable references)
+	public const int REG_BINARY =                  3; // Free form binary
+	public const int REG_DWORD =                   4; // 32-bit number
+	public const int REG_DWORD_LITTLE_ENDIAN =     4; // 32-bit number (same as REG_DWORD)
+	public const int REG_DWORD_BIG_ENDIAN =        5; // 32-bit number
+	public const int REG_LINK =                    6; // Symbolic Link (unicode)
+	public const int REG_MULTI_SZ =                7; // Multiple Unicode strings
+	public const int REG_RESOURCE_LIST =           8; // Resource list in the resource map
+	public const int REG_FULL_RESOURCE_DESCRIPTOR = 9; // Resource list in the hardware description
+	public const int REG_RESOURCE_REQUIREMENTS_LIST = 10;
+	public const int REG_QWORD =                   11; // 64-bit number
+	public const int REG_QWORD_LITTLE_ENDIAN =     11; // 64-bit number (same as REG_QWORD)
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern c_long RegGetValueW(HKey hKey, c_wchar* lpSubKey, c_wchar* lpValue, c_uint dwFlags, uint32* pdwType, void* pvData, uint32* pcbData);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern c_long RegDeleteKeyValueW(HKey hKey, c_wchar* lpSubKey, c_wchar* lpValue);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern c_long RegCreateKeyExW(HKey hKey,
+		c_wchar* lpSubKey,
+		c_uint Reserved,
+		c_wchar* lpClass,
+		c_uint dwOptions,
+		ACCESS_MASK samDesired,
+		SECURITY_ATTRIBUTES* lpSecurityAttributes,
+		HKey* phkResult,
+		c_uint* lpdwDisposition);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern c_long RegSetKeyValueW(HKey hKey, c_wchar* lpSubKey, c_wchar* lpValueName, c_uint dwType, void* lpData, c_uint cbData);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern c_long RegCloseKey(HKey hKey);
+
+	[CallingConvention(.Stdcall), CLink]
+	public static extern c_uint GetModuleFileNameW(Windows.HModule hModule, c_wchar* lpFilename, c_uint nSize);
 }
 
 #endif // BF_PLATFORM_WINDOWS
