@@ -280,21 +280,21 @@ class Program
 							}
 						}
 
-						String stateString = scope .(64);
+						String stateString = scope $"{deviceName}\n{status} | ";
 						if (level != .Unknown)
 						{
-							level.ToString(stateString);
+							stateString.AppendF($"{level}");
 						}
 						else if (state != 0)
 						{
-							stateString.AppendF($"{level}%");
+							stateString.AppendF($"{state}%");
 						}
 						else
 						{
-							stateString.Set("Unknown");
+							stateString.Append("Unknown");
 						}
 
-						notifications.UpdateTip(scope $"{deviceName}\n{status} | {stateString}");
+						notifications.UpdateTip(stateString);
 						notifications.UpdateIcon(icon);
 						notifications.CommitChanges().IgnoreError();
 					}
