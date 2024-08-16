@@ -4,6 +4,7 @@ using System;
 using System.Interop;
 using System.Collections;
 using System.Threading;
+using System.Diagnostics;
 
 namespace FuKeys;
 
@@ -19,6 +20,7 @@ class Notifications_Windows : Notifications
 	const int CMD_TOGGLE_CONSOLE = WM_USER + 10;
 	const int CMD_EXIT = WM_USER + 11;
 	const int CMD_TOGGLE_STARTUP = WM_USER + 12;
+	const int CMD_OPEN_LOGS = WM_USER + 13;
 	const int WMU_COMMIT = WM_USER + 30;
 
 
@@ -120,6 +122,17 @@ class Notifications_Windows : Notifications
 						SetRunAtStartup(flags == MF_CHECKED);
 						CheckMenuItem(_hCtxMenu, CMD_TOGGLE_STARTUP, (uint32)MF_BYCOMMAND | flags);
 						return 0;
+					}
+
+				case CMD_OPEN_LOGS:
+					{
+						ProcessStartInfo psi = scope ProcessStartInfo();
+						psi.SetFileName("logs");
+						psi.UseShellExecute = true;
+						psi.SetVerb("Open");
+
+						var process = scope SpawnedProcess();
+						process.Start(psi).IgnoreError();
 					}
 
 				case CMD_EXIT:
@@ -337,6 +350,7 @@ class Notifications_Windows : Notifications
 		bool atStartup = IsRunAtStartup(true);
 		AppendMenuW(_hCtxMenu, (uint32)(atStartup ? MF_CHECKED : MF_UNCHECKED), CMD_TOGGLE_STARTUP, "Start with windows".ToScopedNativeWChar!());
 
+		AppendMenuW(_hCtxMenu, MF_STRING, CMD_OPEN_LOGS, "Open logs directory".ToScopedNativeWChar!());
 		AppendMenuW(_hCtxMenu, MF_STRING, CMD_EXIT, "Exit".ToScopedNativeWChar!());
 		return true;
 	}
