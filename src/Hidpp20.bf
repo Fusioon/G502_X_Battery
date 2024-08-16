@@ -632,7 +632,14 @@ class Hidpp20
 				if (GetFeature(feature.index, i) case .Ok((let page, let val)))
 				{
 					if (Enum.IsDefined<EHidppPage>(page))
-						_featuresMap.Add(page, val);
+					{
+						if (_featuresMap.TryGetValue(page, let prev))
+						{
+							Log.Warning(scope $"[HIDPP20] Duplicate feature.\n\tPage: {page}\n\tExisting: {prev.index} {prev.type}\n\tNew: {val.index} {val.type}");
+						}
+
+						_featuresMap[page] = val;
+					}	
 					else
 						undefinedFeatures.Add(page.Underlying);
 				}
