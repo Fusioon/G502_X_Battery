@@ -211,6 +211,7 @@ class Program
 
 			int32 consecutiveErrors = 0;
 			int32 ignoreAfterDisconnect = 0;
+			bool wasDisconnected = false;
 
 			EVENT_LOOP:
 			while (!exitEvent.WaitFor(0) && driver.IsUSBDeviceValid)
@@ -219,10 +220,14 @@ class Program
 
 				if (!driver.DeviceConnected)
 				{
+					if (ignoreAfterDisconnect == 0)
+					{
+						notifications.UpdateTip(scope $"{deviceName}\nDisconnected");
+						notifications.UpdateIcon(.ChargingError);
+						notifications.CommitChanges().IgnoreError();
+					}
+
 					ignoreAfterDisconnect = 1;
-					notifications.UpdateTip(scope $"{deviceName}\nDisconnected");
-					notifications.UpdateIcon(.ChargingError);
-					notifications.CommitChanges();
 					Thread.Sleep(2000);
 
 					if (IsWireConnected())
@@ -233,22 +238,24 @@ class Program
 
 				if (driver.GetBatteryStatus() case .Ok((let state, let status, let level)))
 				{
-					consecutiveErrors = 0;
-
 					if (ignoreAfterDisconnect > 0)
 					{
 						ignoreAfterDisconnect--;
-						if ((state == 1 || (level == .Unknown && state == 0)) && status == .Charging)
+						wasDisconnected = true;
+						if ((level == .Unknown && state <= 1) && status == .Charging)
+						{
 							continue;
+						}
 					}
 
-					if (state != lastState || status != lastStatus || level != lastLevel)
+					consecutiveErrors = 0;
+
+					if (wasDisconnected || (state != lastState) || (status != lastStatus) || (level != lastLevel))
 					{
+						wasDisconnected = false;
 						lastState = state;
 						lastStatus = status;
 						lastLevel = level;
-
-						notifications.UpdateTip(scope $"{deviceName}\n{status} | {state}%");
 
 						Notifications_Windows.EIcon icon;
 						switch (status)
@@ -273,6 +280,21 @@ class Program
 							}
 						}
 
+						String stateString = scope .(64);
+						if (level != .Unknown)
+						{
+							level.ToString(stateString);
+						}
+						else if (state != 0)
+						{
+							stateString.AppendF($"{level}%");
+						}
+						else
+						{
+							stateString.Set("Unknown");
+						}
+
+						notifications.UpdateTip(scope $"{deviceName}\n{status} | {stateString}");
 						notifications.UpdateIcon(icon);
 						notifications.CommitChanges().IgnoreError();
 					}
@@ -307,6 +329,13 @@ class Program
 			Console.WriteLine(preferredFormat);
 			Console.ForegroundColor = color;
 		});
+
+		if (System.Diagnostics.Debug.IsDebuggerPresent)
+		{
+			Log.AddCallback(new (level, time, message, preferredFormat) => {
+				System.Diagnostics.Debug.WriteLine(preferredFormat);
+			});
+		}
 
 		Directory.CreateDirectory("logs");
 		File.Delete("logs/previous.log").IgnoreError();

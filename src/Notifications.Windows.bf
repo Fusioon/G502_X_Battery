@@ -155,6 +155,10 @@ class Notifications_Windows : Notifications
 						_changeEvent.Reset();
 					}
 				}
+				else
+				{
+					Log.Warning("[Win32] Commit executed without pending changes?");
+				}
 
 				//UpdateListeningStatus(wParam != 0);
 			}
