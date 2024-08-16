@@ -105,6 +105,24 @@ class Program
 		DeviceManager deviceMan = scope DeviceManager_Windows();
 		List<DeviceData> foundDevices = scope .(16);
 
+		bool IsWireConnected()
+		{
+			bool result = false;
+			deviceMan.ForEach(.HID, scope [&result](info) => {
+
+				if (IsSupported(info.productId, let wireless) && !wireless)
+				{
+					result = true;
+					return false;
+				}
+
+				return true;
+				
+			}, .(LOGITECH_VENDOR_ID, null, 0xFF00));
+
+			return result;
+		}
+
 		while (!exitEvent.WaitFor(0))
 		{
 			defer { ClearAndDeleteItems!(foundDevices); }
@@ -140,13 +158,18 @@ class Program
 				return true;
 			}, .(LOGITECH_VENDOR_ID, null, 0xFF00));
 
-			if (foundDevices.IsEmpty)
-				return;
-
 			let bestDevice = GetBestDevice(foundDevices);
 			if (bestDevice == null)
 			{
-				Log.Error("Failed to find supported device.");
+				if (foundDevices.IsEmpty)
+					Log.Error("No supported device found");
+				else
+					Log.Error("Failed to find supported device.");
+
+				notifications.UpdateTip("No supported device found");
+				notifications.UpdateIcon(.ChargingError);
+				notifications.CommitChanges().IgnoreError();
+
 				Thread.Sleep(ERROR_DELAY_MS);
 				continue;
 			}	
@@ -201,6 +224,10 @@ class Program
 					notifications.UpdateIcon(.ChargingError);
 					notifications.CommitChanges();
 					Thread.Sleep(2000);
+
+					if (IsWireConnected())
+						break EVENT_LOOP;
+
 					continue;
 				}
 
@@ -247,7 +274,7 @@ class Program
 						}
 
 						notifications.UpdateIcon(icon);
-						notifications.CommitChanges();
+						notifications.CommitChanges().IgnoreError();
 					}
 				}
 				else
