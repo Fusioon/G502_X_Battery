@@ -127,7 +127,7 @@ class Notifications_Windows : Notifications
 				case CMD_OPEN_LOGS:
 					{
 						ProcessStartInfo psi = scope ProcessStartInfo();
-						psi.SetFileName("logs");
+						psi.SetFileName(Program.LogsPath);
 						psi.UseShellExecute = true;
 						psi.SetVerb("Open");
 

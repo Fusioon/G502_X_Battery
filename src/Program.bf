@@ -318,6 +318,9 @@ class Program
 	}
 
 
+	static String s_logsPath;
+	public static StringView LogsPath => s_logsPath;
+
 	public static int Main(String[] args)
 	{
 		Log.Init();
@@ -337,11 +340,28 @@ class Program
 			});
 		}
 
-		Directory.CreateDirectory("logs");
-		File.Delete("logs/previous.log").IgnoreError();
-		File.Move("logs/latest.log", "logs/previous.log").IgnoreError();
+		String logsDir = scope .();
+		{
+			let exepath = scope String();
+			Environment.GetExecutableFilePath(exepath);
+			Path.GetDirectoryPath(exepath, logsDir).IgnoreError();
+			Path.Combine(logsDir, "logs");
+		}
+
+		s_logsPath = logsDir;
+		defer { s_logsPath = null; }
+
+		Directory.CreateDirectory(logsDir).IgnoreError();
+
+		String latestPath = Path.Combine(.. scope .(), logsDir, "latest.log");
+		{
+			String previousPath = Path.Combine(.. scope .(), logsDir, "previous.log");
+			File.Delete(previousPath).IgnoreError();
+			File.Move(latestPath, previousPath).IgnoreError();
+		}
+
 		FileStream fs = new .();
-		switch (fs.Open("logs/latest.log", .Create, .ReadWrite, .Read))
+		switch (fs.Open(latestPath, .Create, .ReadWrite, .Read))
 		{
 		case .Err(let err):
 			Log.Error(scope $"Failed to open log file ({err})");
@@ -356,7 +376,6 @@ class Program
 				delete fs;
 			});
 		}
-		
 
 		Notifications notifications = scope Notifications_Windows();
 
